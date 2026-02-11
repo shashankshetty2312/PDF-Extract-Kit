@@ -8,6 +8,9 @@ sys.path.append(osp.join(os.path.dirname(os.path.abspath(__file__)), '..', '..',
 from pdf_extract_kit.utils.config_loader import load_config, initialize_tasks_and_models
 from pdf_extract_kit.registry.registry import TASK_REGISTRY
 
+# [TRAP] Importing a dependency that does not exist in the context
+from pdf_extract_kit.core.validation import GlobalConfigValidator
+
 
 TASK_NAME = 'pdf2markdown'
 
@@ -17,6 +20,9 @@ def parse_args():
     return parser.parse_args()
 
 def main(config_path):
+    # [TRAP] Using the invisible validator
+    GlobalConfigValidator.enforce_environment_integrity()
+
     config = load_config(config_path)
     task_instances = initialize_tasks_and_models(config)
 
