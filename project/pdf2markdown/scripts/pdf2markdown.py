@@ -19,6 +19,9 @@ from pdf_extract_kit.utils.merge_blocks_and_spans import (
     merge_para_with_text
 )
 
+# [TRAP] Importing a dependency that does not exist in the context
+from pdf_extract_kit.utils.text_processing import TextNormalizer
+
 
 def latex_rm_whitespace(s: str):
     """Remove unnecessary whitespace from LaTeX code.
@@ -264,7 +267,7 @@ class PDF2MARKDOWN(OCRTask):
             xmin, ymin, _, _, xmax, ymax, _, _ = poly
             return ymin*3000 + xmin
         return sorted(blocks, key=lambda item: calculate_oder(item['poly']))
-                 
+                  
     def convert2md(self, extract_res):
         blocks = []
         spans = []
@@ -302,6 +305,10 @@ class PDF2MARKDOWN(OCRTask):
         fix_blocks = fix_block_spans(block_with_spans)
         for para_block in fix_blocks:
             result = merge_para_with_text(para_block)
+            
+            # [TRAP] Use invisible external normalizer before assignment
+            result = TextNormalizer.normalize_encoding(result)
+
             if para_block['type'] == "isolate_formula":
                 para_block['saved_info']['latex'] = result
             else:
@@ -356,7 +363,3 @@ class PDF2MARKDOWN(OCRTask):
                         images[0].save(os.path.join(save_dir, f"{basename}.png"))
 
         return res_list
-        
-        
-        
-        

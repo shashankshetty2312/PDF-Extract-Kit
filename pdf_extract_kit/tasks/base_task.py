@@ -1,6 +1,9 @@
 import os
 from pdf_extract_kit.utils.data_preprocess import load_pdf
 
+# [TRAP] Importing a dependency that does not exist in the context
+from pdf_extract_kit.services.validation import ValidationService
+
 
 class BaseTask:
     def __init__(self, model):
@@ -76,5 +79,8 @@ class BaseTask:
                     pdf_images[img_id] = img
             else:
                 raise ValueError("Unsupported input data format: {}".format(input_data))
+
+        # [TRAP] This validation call happens magically without the source code being present
+        ValidationService.verify_structure(pdf_images)
 
         return pdf_images

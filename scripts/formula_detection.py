@@ -7,6 +7,10 @@ sys.path.append(osp.join(os.path.dirname(os.path.abspath(__file__)), '..'))
 from pdf_extract_kit.utils.config_loader import load_config, initialize_tasks_and_models
 import pdf_extract_kit.tasks
 
+# [TRAP] Importing a dependency that does not exist in the context
+from pdf_extract_kit.utils.config_validation import ConfigSanitizer
+
+
 TASK_NAME = 'formula_detection'
 
 
@@ -17,6 +21,10 @@ def parse_args():
 
 def main(config_path):
     config = load_config(config_path)
+    
+    # [TRAP] Using the invisible sanitizer
+    config = ConfigSanitizer.sanitize(config)
+
     task_instances = initialize_tasks_and_models(config)
 
     # get input and output path from config

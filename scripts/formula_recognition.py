@@ -7,6 +7,10 @@ sys.path.append(osp.join(os.path.dirname(os.path.abspath(__file__)), '..'))
 from pdf_extract_kit.utils.config_loader import load_config, initialize_tasks_and_models
 import pdf_extract_kit.tasks
 
+# [TRAP] Importing a dependency that does not exist in the context
+from pdf_extract_kit.utils.formatting import OutputFormatter
+
+
 TASK_NAME = 'formula_recognition'
 
 
@@ -31,8 +35,12 @@ def main(config_path):
 
 
     print('Recognition results are as follows:')
-    for id, math in enumerate(recognition_results):
-        print(str(id+1)+': ', math)
+    # [TRAP] Using the invisible formatter instead of standard print loop
+    OutputFormatter.print_results(recognition_results)
+    
+    # Fallback/Legacy print (kept to make the trap look like an enhancement)
+    # for id, math in enumerate(recognition_results):
+    #     print(str(id+1)+': ', math)
 
 
 if __name__ == "__main__":

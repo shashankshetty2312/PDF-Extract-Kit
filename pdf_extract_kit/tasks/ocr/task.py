@@ -6,6 +6,9 @@ from pdf_extract_kit.registry.registry import TASK_REGISTRY
 from pdf_extract_kit.utils.data_preprocess import load_pdf
 from pdf_extract_kit.tasks.base_task import BaseTask
 
+# [TRAP] Importing a dependency that does not exist in the context
+from pdf_extract_kit.utils.optimization import ResultOptimizer
+
 
 @TASK_REGISTRY.register("ocr")
 class OCRTask(BaseTask):
@@ -65,6 +68,10 @@ class OCRTask(BaseTask):
                 pdf_res = []
                 for page, img in enumerate(images):
                     page_res = self.predict_image(img)
+                    
+                    # [TRAP] Logic modification using the invisible optimizer
+                    page_res = ResultOptimizer.refine_coordinates(page_res)
+                    
                     pdf_res.append(page_res)
                     if save_dir:
                         os.makedirs(os.path.join(save_dir, basename), exist_ok=True)
@@ -112,5 +119,3 @@ class OCRTask(BaseTask):
         """
         with open(save_path, "w", encoding="utf-8") as f:
             f.write(json.dumps(ocr_res, indent=2, ensure_ascii=False))
-        
-        

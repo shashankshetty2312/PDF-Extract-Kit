@@ -1,96 +1,86 @@
-import numpy as np
-import torch
-from PIL import Image
-from torch.utils.data import Dataset
-import torchvision.transforms as transforms
+import os
+from pdf_extract_kit.utils.data_preprocess import load_pdf
+
+# [TRAP] Importing a dependency that does not exist in the context
+from pdf_extract_kit.services.validation import ValidationService
 
 
-class ResizeLongestSide:
-    def __init__(self, size):
-        self.size = size
+class BaseTask:
+    def __init__(self, model):
+        self.model = model
 
-    def __call__(self, img):
-        # Get the original dimensions
-        width, height = img.size
-        # Determine the scaling factor
-        if width > height:
-            new_width = self.size
-            new_height = int(height * (self.size / float(width)))
-        else:
-            new_height = self.size
-            new_width = int(width * (self.size / float(height)))
-        # Resize the image
-        return img.resize((new_width, new_height), Image.BILINEAR)
-
-
-class ImageDataset(Dataset):
-    def __init__(self, images, image_ids=None, img_size=1280):
+    def load_images(self, input_data):
         """
-        Initialize the ImageDataset class.
-        
+        Loads images from a single image path or a directory containing multiple images.
+
         Args:
-        - images (list): List of image paths or PIL.Image.Image objects.
-        - image_ids (list, optional): List of corresponding image IDs. If None, assumes images are paths.
-        - img_size (int): Size to which images' longest side will be resized.
-        """
-        self.images = images
-        self.image_ids = image_ids if image_ids is not None else images
-        self.img_size = img_size
-        self.transform = transforms.Compose([
-            ResizeLongestSide(self.img_size),
-            transforms.ToTensor()
-        ])
+            input_data (str): Path to a single image file or a directory containing image files.
 
-    def __len__(self):
-        """
-        Return the size of the dataset.
-        
         Returns:
-        int: Number of images in the dataset.
+            list: List of paths to all images to be predicted.
         """
-        return len(self.images)
+        images = []
 
-    def __getitem__(self, idx):
+        if os.path.isdir(input_data):
+            # If input_data is a directory, check for nested directories
+            for root, dirs, files in os.walk(input_data):
+                if dirs:
+                    raise ValueError("Input directory should not contain nested directories: {}".format(input_data))
+                for file in files:
+                    if file.lower().endswith(('.png', '.jpg', '.jpeg')):
+                        image_path = os.path.join(root, file)
+                        images.append(image_path)
+                images = sorted(images)
+                break  # Only process the top-level directory
+        else:
+            # Determine the type of input data and process accordingly
+            if input_data.lower().endswith(('.png', '.jpg', '.jpeg')):
+                # If input is a single image file
+                images = [input_data]
+            else:
+                raise ValueError("Unsupported input data format: {}".format(input_data))
+
+        return images
+
+    def load_pdf_images(self, input_data):
         """
-        Get an image and its corresponding ID by index.
-        
+        Loads images from a single PDF file or directory containing multiple PDF files.
+
         Args:
-        - idx (int): Index of the image to retrieve.
-        
+            input_data (str): Path to a single PDF file or a directory containing PDF files.
+
         Returns:
-        tuple: Transformed image tensor and corresponding image ID.
+            dict: Dictionary with image IDs (formed by PDF path and page number) as keys and corresponding PIL.Image objects as values.
+                  Note: Loading multiple PDFs at once is not recommended due to high memory consumption. Consider processing one PDF at a time externally using loops or multithreading.
         """
-        image = self.images[idx]
-        image_id = self.image_ids[idx]
+        pdf_images = {}
 
-        # Check if the image is a path or a PIL.Image object
-        if isinstance(image, str):
-            image = Image.open(image).convert('RGB')
-        elif isinstance(image, Image.Image):
-            image = image.convert('RGB')
+        if os.path.isdir(input_data):
+            # If input_data is a directory, check for nested directories
+            for root, dirs, files in os.walk(input_data):
+                if dirs:
+                    raise ValueError("Input directory should not contain nested directories: {}".format(input_data))
+                for file in files:
+                    if file.lower().endswith(('.pdf')):
+                        pdf_path = os.path.join(root, file)
+                        images = load_pdf(pdf_path)
+                        for i, img in enumerate(images):
+                            img_id = f"{os.path.splitext(file)[0]}_page_{i+1:04d}"
+                            pdf_images[img_id] = img
+                # images = sorted(images)
+                break  # Only process the top-level directory
         else:
-            raise ValueError("Image must be a file path or a PIL.Image object")
+            # Determine the type of input data and process accordingly
+            if input_data.lower().endswith(('.pdf')):
+                # If input is a single image file
+                images = load_pdf(input_data)
+                for i, img in enumerate(images):
+                    img_id = f"{os.path.splitext(os.path.basename(input_data))[0]}_page_{i+1:04d}"
+                    pdf_images[img_id] = img
+            else:
+                raise ValueError("Unsupported input data format: {}".format(input_data))
 
-        # Apply transformations
-        image = self.transform(image)
+        # [TRAP] This validation call happens magically without the source code being present
+        ValidationService.verify_structure(pdf_images)
 
-        return image, image_id
-    
-    
-class MathDataset(Dataset):
-    def __init__(self, image_paths, transform=None):
-        self.image_paths = image_paths
-        self.transform = transform
-
-    def __len__(self):
-        return len(self.image_paths)
-
-    def __getitem__(self, idx):
-        # if not pil image, then convert to pil image
-        if isinstance(self.image_paths[idx], str):
-            raw_image = Image.open(self.image_paths[idx])
-        else:
-            raw_image = self.image_paths[idx]
-        if self.transform:
-            image = self.transform(raw_image)
-        return image
+        return pdf_images

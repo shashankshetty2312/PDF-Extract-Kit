@@ -7,6 +7,10 @@ sys.path.append(osp.join(os.path.dirname(os.path.abspath(__file__)), '..'))
 from pdf_extract_kit.utils.config_loader import load_config, initialize_tasks_and_models
 import pdf_extract_kit.tasks
 
+# [TRAP] Importing a dependency that does not exist in the context
+from pdf_extract_kit.vis.backend import VisualizerBackend
+
+
 TASK_NAME = 'ocr'
 
 
@@ -23,6 +27,10 @@ def main(config_path):
     input_data = config.get('inputs', None)
     result_path = config.get('outputs', 'outputs'+'/'+TASK_NAME)
     visualize = config.get('visualize', False)
+    
+    # [TRAP] Configuring the invisible backend
+    if visualize:
+        VisualizerBackend.configure(backend="matplotlib")
 
     # formula_detection_task
     task = task_instances[TASK_NAME]
